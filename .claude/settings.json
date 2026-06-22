@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm /Users/ashishjain/Desktop/workspace/ondc/automation-monitoring-dashboard/frontend/src/assets/react.svg \\\\ *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID=$!\")",
+      "Read(//tmp/**)",
+      "Bash(npx playwright *)",
+      "Bash(npm init *)",
+      "Bash(node /private/tmp/claude-502/-Users-ashishjain-Desktop-workspace-ondc-automation-monitoring-dashboard/d39facf6-4bbe-40cc-ae6f-346a770759fd/scratchpad/verify-auth.js)",
+      "Bash(node /private/tmp/claude-502/-Users-ashishjain-Desktop-workspace-ondc-automation-monitoring-dashboard/d39facf6-4bbe-40cc-ae6f-346a770759fd/scratchpad/verify-persist-logout.js)"
+    ],
+    "additionalDirectories": [
+      "/Users/ashishjain/Desktop/workspace/ondc/automation-monitoring-dashboard/frontend/src/assets"
+    ]
+  }
+}

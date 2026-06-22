@@ -19,8 +19,9 @@ export default defineConfig({
         strictPort: true,
         proxy: {
             // Backend aggregation/proxy API (incl. SSE log tail).
+            // Target is read from BACKEND_URL in .env (not exposed to browser).
             '/api': {
-                target: 'http://localhost:4090',
+                target: process.env.BACKEND_URL ?? 'http://localhost:4090',
                 changeOrigin: true,
             },
         },
