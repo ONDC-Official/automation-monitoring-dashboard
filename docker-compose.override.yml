@@ -1,0 +1,29 @@
+# Grafana embedding for the admin monitoring dashboard.
+#
+# The monitored service ships its own observability stack at:
+#   automation-mock-playground-service/docker-compose.observability.yml
+# (Grafana on host port 3005). By default that Grafana refuses to be embedded
+# in an iframe. This override adds the env needed for the dashboard's
+# "Grafana" / embedded-panel views.
+#
+# USAGE — layer this on top of the observability compose, e.g.:
+#   cd ../automation-mock-playground-service
+#   docker compose \
+#     -f docker-compose.observability.yml \
+#     -f ../automation-monitoring/docker-compose.override.yml \
+#     up -d grafana
+#
+# (Service name must match the one in docker-compose.observability.yml — adjust
+#  `grafana:` below if that file names it differently.)
+
+services:
+    grafana:
+        environment:
+            # Allow the dashboard frontend to embed panels via <iframe>.
+            - GF_SECURITY_ALLOW_EMBEDDING=true
+            # Frictionless read-only embedding (no Grafana login in the iframe).
+            # Drop these two if you instead proxy authenticated requests.
+            - GF_AUTH_ANONYMOUS_ENABLED=true
+            - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+            # Needed when the dashboard is served from a different origin.
+            - GF_SECURITY_COOKIE_SAMESITE=none
