@@ -1,7 +1,7 @@
 import pino from 'pino';
 import { config } from '../config/env';
 
-const isDev = config.nodeEnv !== 'production';
+const isDev = config.nodeEnv === 'development';
 
 export const logger = pino({
     level: config.logLevel,

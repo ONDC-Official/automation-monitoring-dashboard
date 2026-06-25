@@ -27,7 +27,7 @@ createRoot(document.getElementById('root')!).render(
         <Provider store={store}>
             <PersistGate loading={null} persistor={persistor}>
                 <QueryClientProvider client={queryClient}>
-                    <BrowserRouter>
+                    <BrowserRouter basename={import.meta.env.VITE_BASE_URL ?? '/'}>
                         <TooltipProvider delayDuration={200}>
                             <GlobalSpinner />
                             <App />
