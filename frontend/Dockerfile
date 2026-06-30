@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 node:22-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -7,14 +7,10 @@ ARG VITE_API_BASE_URL
 ARG VITE_AUTH_USERNAME
 ARG VITE_AUTH_PASSWORD
 ARG VITE_BASE_URL=/
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_AUTH_USERNAME=$VITE_AUTH_USERNAME \
-    VITE_AUTH_PASSWORD=$VITE_AUTH_PASSWORD \
-    VITE_BASE_URL=$VITE_BASE_URL
 RUN npm run build
 
 
-FROM --platform=linux/amd64 node:22-alpine
+FROM node:22-alpine
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=builder /app/dist ./dist
