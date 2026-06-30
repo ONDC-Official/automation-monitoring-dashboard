@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - release-*
+      - main
       - draft-*
+      - release-staging
+      - release-*
 
 permissions:
-  contents: write
   packages: write
 
 concurrency:
@@ -16,13 +17,51 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-push:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      semver:      ${{ steps.set.outputs.semver }}
+      image_tag:   ${{ steps.set.outputs.image_tag }}
+      environment: ${{ steps.set.outputs.environment }}
+      target_file: ${{ steps.set.outputs.target_file }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Read version and compute image tag
+        id: set
+        run: |
+          SEMVER=$(node -p "require('./backend/package.json').version")
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+
+          if [[ "${{ github.ref_name }}" == release-* ]]; then
+            ENV=staging
+            TARGET="k8/aws/helm/service-layer/values-staging.yaml"
+          else
+            ENV=dev
+            TARGET="k8/aws/helm/service-layer/values.yaml"
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            IMAGE_TAG="${ENV}-${SEMVER}-${SHORT_SHA}-r${{ github.run_number }}"
+          else
+            IMAGE_TAG="${ENV}-${SEMVER}-${SHORT_SHA}"
+          fi
+
+          echo "semver=${SEMVER}"       >> $GITHUB_OUTPUT
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "environment=${ENV}"     >> $GITHUB_OUTPUT
+          echo "target_file=${TARGET}"  >> $GITHUB_OUTPUT
+
+  build-backend:
+    needs: version
+    runs-on: ubuntu-latest
+    environment: ${{ needs.version.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -32,23 +71,20 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
-      - name: Determine environment and image tag
-        run: |
-          VERSION=$(node -p "require('./backend/package.json').version")
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          if [[ "${{ github.ref_name }}" == release-* ]]; then
-            echo "ENVIRONMENT=staging" >> $GITHUB_ENV
-            echo "IMAGE_TAG=staging-${VERSION}-${SHORT_SHA}" >> $GITHUB_ENV
-            echo "TARGET_FILE=k8/aws/helm/service-layer/values-staging.yaml" >> $GITHUB_ENV
-            echo "VITE_API_BASE_URL=https://preprod-workbench.ondc.tech/monitoring-api" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-            echo "IMAGE_TAG=dev-${VERSION}-${SHORT_SHA}" >> $GITHUB_ENV
-            echo "TARGET_FILE=k8/aws/helm/service-layer/values.yaml" >> $GITHUB_ENV
-            echo "VITE_API_BASE_URL=https://dev-workbench.ondc.tech/monitoring-api" >> $GITHUB_ENV
-          fi
+      - name: Set image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/ondc-official/automation-monitoring-dashboard/backend
+          tags: |
+            type=raw,value=${{ needs.version.outputs.image_tag }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref_name, 'release') }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ needs.version.outputs.semver }}
 
       - name: Build and push backend image
         uses: docker/build-push-action@v5
@@ -56,11 +92,50 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: |
-            ghcr.io/ondc-official/automation-monitoring-dashboard/backend:${{ env.IMAGE_TAG }}
-            ghcr.io/ondc-official/automation-monitoring-dashboard/backend:latest
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  build-frontend:
+    needs: version
+    runs-on: ubuntu-latest
+    environment: ${{ needs.version.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/ondc-official/automation-monitoring-dashboard/frontend
+          tags: |
+            type=raw,value=${{ needs.version.outputs.image_tag }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref_name, 'release') }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.version=${{ needs.version.outputs.semver }}
+
+      - name: Resolve frontend API URL
+        id: vars
+        run: |
+          if [[ "${{ needs.version.outputs.environment }}" == "staging" ]]; then
+            echo "vite_api_base_url=https://preprod-workbench.ondc.tech/monitoring-api" >> $GITHUB_OUTPUT
+          else
+            echo "vite_api_base_url=https://dev-workbench.ondc.tech/monitoring-api" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
@@ -68,17 +143,20 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: |
-            ghcr.io/ondc-official/automation-monitoring-dashboard/frontend:${{ env.IMAGE_TAG }}
-            ghcr.io/ondc-official/automation-monitoring-dashboard/frontend:latest
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
-            VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }}
+            VITE_API_BASE_URL=${{ steps.vars.outputs.vite_api_base_url }}
             VITE_AUTH_USERNAME=admin
             VITE_AUTH_PASSWORD=${{ secrets.MONITORING_DASHBOARD_AUTH_PASSWORD }}
             VITE_BASE_URL=/monitoring
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  update-iac:
+    needs: [version, build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
       - name: Generate GitHub App token
         id: app-token
         uses: actions/create-github-app-token@v1
@@ -87,7 +165,7 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: automation-iac
 
-      - name: Clone automation-iac repo
+      - name: Checkout automation-iac
         uses: actions/checkout@v4
         with:
           repository: ONDC-Official/automation-iac
@@ -101,33 +179,78 @@ jobs:
 
           target = f"automation-iac/{os.environ['TARGET_FILE']}"
           image_tag = os.environ['IMAGE_TAG']
-          sections = {'monitoringDashboardBackend', 'monitoringDashboardFrontend'}
+
+          expected = {
+              'monitoringDashboardBackend':  'ghcr.io/ondc-official/automation-monitoring-dashboard/backend',
+              'monitoringDashboardFrontend': 'ghcr.io/ondc-official/automation-monitoring-dashboard/frontend',
+          }
 
           with open(target, 'r') as f:
               lines = f.readlines()
 
           current_section = None
+          in_image = False
+          found = {k: False for k in expected}
+          repo_validated = {k: False for k in expected}
+          updated = {k: False for k in expected}
           result = []
+
           for line in lines:
-              if re.match(r'^[a-zA-Z]', line):
-                  key = line.split(':')[0].strip()
-                  current_section = key if key in sections else None
-              if current_section and re.match(r'^\s+tag:\s', line):
-                  line = re.sub(r'(tag:\s).*', rf'\g<1>{image_tag}', line)
+              if re.match(r'^[A-Za-z0-9_]+:\s*$', line):
+                  key = line.strip().rstrip(':')
+                  current_section = key if key in expected else None
+                  in_image = False
+
+              if current_section:
+                  found[current_section] = True
+                  if re.match(r'^\s{2}image:\s*$', line):
+                      in_image = True
+                  elif re.match(r'^\s{2}[A-Za-z0-9_]+:\s*$', line):
+                      in_image = False
+
+                  if in_image and re.match(r'^\s{4}repository:\s', line):
+                      repo = line.split(':', 1)[1].strip().strip('\'"')
+                      if repo != expected[current_section]:
+                          raise RuntimeError(
+                              f"{current_section}.image.repository is '{repo}', expected '{expected[current_section]}'"
+                          )
+                      repo_validated[current_section] = True
+
+                  if in_image and re.match(r'^\s{4}tag:\s', line):
+                      line = re.sub(r'(tag:\s).*', rf'\g<1>{image_tag}', line)
+                      updated[current_section] = True
+
               result.append(line)
+
+          for key in expected:
+              if not found[key]:
+                  raise RuntimeError(f"{key} not found in {target}")
+              if not repo_validated[key]:
+                  raise RuntimeError(f"{key}.image.repository not found in {target}")
+              if not updated[key]:
+                  raise RuntimeError(f"{key}.image.tag not found in {target}")
 
           with open(target, 'w') as f:
               f.writelines(result)
+
+          print(f"Updated monitoringDashboardBackend and monitoringDashboardFrontend image tags to: {image_tag}")
           PYEOF
         env:
-          TARGET_FILE: ${{ env.TARGET_FILE }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          TARGET_FILE: ${{ needs.version.outputs.target_file }}
+          IMAGE_TAG:   ${{ needs.version.outputs.image_tag }}
 
-      - name: Commit and push tag update to automation-iac
+      - name: Commit and push tag update to IaC repo
         run: |
           cd automation-iac
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ env.TARGET_FILE }}"
-          git commit -m "chore(${{ env.ENVIRONMENT }}): automation-monitoring-dashboard -> ${{ env.IMAGE_TAG }}"
-          git push
+          git add "${{ needs.version.outputs.target_file }}"
+          if git diff --staged --quiet; then
+            echo "Image tag already up to date, skipping commit."
+          else
+            git commit -m "ci: update automation-monitoring-dashboard image tag to ${{ needs.version.outputs.image_tag }} (${{ needs.version.outputs.environment }})"
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              sleep $((i * 5))
+            done
+          fi
