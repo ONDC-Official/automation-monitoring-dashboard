@@ -10,7 +10,7 @@ ARG VITE_BASE_URL=/
 RUN npm run build
 
 
-FROM --platform=linux/amd64 node:22-alpine
+FROM node:22-alpine
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=builder /app/dist ./dist
