@@ -6,6 +6,7 @@ import pinoHttp from 'pino-http';
 import { config } from './config/env';
 import logger from './observability/logger';
 import apiRoutes from './routes';
+import authRoutes from './routes/auth';
 import { requireAdminToken } from './middlewares/auth';
 import { errorHandler } from './middlewares/error';
 
@@ -29,6 +30,9 @@ export const createServer = (): Application => {
 
     app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+    // Login is public — it's how a client obtains its bearer token. Mounted
+    // before the gate so it isn't itself blocked by requireAdminToken.
+    app.use('/api/auth', authRoutes);
     app.use('/api', requireAdminToken, apiRoutes);
 
     app.use((_req, res) => res.status(404).json({ error: 'not_found' }));

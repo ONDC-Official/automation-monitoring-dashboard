@@ -21,6 +21,14 @@ export const config = {
 
     adminToken: process.env.ADMIN_TOKEN || undefined,
 
+    // Dashboard login credentials. Validated server-side by /api/auth/login so
+    // they never ship in the browser bundle. On success the client is handed
+    // `adminToken` as its bearer for subsequent /api calls.
+    auth: {
+        username: process.env.AUTH_USERNAME || undefined,
+        password: process.env.AUTH_PASSWORD || undefined,
+    },
+
     redis: {
         host: process.env.REDIS_HOST ?? 'localhost',
         port: num(process.env.REDIS_PORT, 6379),
