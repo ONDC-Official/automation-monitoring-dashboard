@@ -1,4 +1,4 @@
-import { InspectResult } from './service';
+import { InspectResult } from './service.js';
 
 /**
  * STUB — Redis "auto-correct" / business repair.

@@ -48,6 +48,23 @@
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: oklch(1 0 0 / 20%);
     --sidebar-ring: #00aeef;
+
+    /**
+     * Status palette — the house convention, stated once.
+     *
+     * green = ok/up, amber = warn/degraded, red = down/error, grey = idle.
+     * Mapped onto the ONDC brand above rather than a second set of hues, so
+     * the MCP pages and the playground pages read as one product. Each colour
+     * has a `-soft` companion for badge and panel backgrounds.
+     */
+    --status-ok: #44823d;
+    --status-ok-soft: #eaf3e9;
+    --status-warn: #f29c49;
+    --status-warn-soft: #fdf1e6;
+    --status-error: #d13438;
+    --status-error-soft: #fbeaea;
+    --status-idle: #606161;
+    --status-idle-soft: #f3f4f6;
 }
 
 .dark {
@@ -83,6 +100,16 @@
     --sidebar-accent-foreground: #f0f2f5;
     --sidebar-border: oklch(1 0 0 / 8%);
     --sidebar-ring: #00aeef;
+
+    /* Same hues, lifted for contrast; the soft tints become dark washes. */
+    --status-ok: #5cb054;
+    --status-ok-soft: #16281a;
+    --status-warn: #f2a862;
+    --status-warn-soft: #2e2113;
+    --status-error: #f16b6f;
+    --status-error-soft: #2e1618;
+    --status-idle: #939598;
+    --status-idle-soft: #1e2a38;
 }
 
 @theme inline {
@@ -130,6 +157,40 @@
     --color-ondc-gray-light: var(--ondc-gray-light);
     --color-ondc-orange: var(--ondc-orange);
     --color-ondc-green: var(--ondc-green);
+    /* Status palette as utilities: bg-status-ok-soft, text-status-error, … */
+    --color-status-ok: var(--status-ok);
+    --color-status-ok-soft: var(--status-ok-soft);
+    --color-status-warn: var(--status-warn);
+    --color-status-warn-soft: var(--status-warn-soft);
+    --color-status-error: var(--status-error);
+    --color-status-error-soft: var(--status-error-soft);
+    --color-status-idle: var(--status-idle);
+    --color-status-idle-soft: var(--status-idle-soft);
+    --font-mono:
+        ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+        'Liberation Mono', monospace;
+}
+
+/**
+ * A restrained scrollbar for dense panels — the journal table, the JSON
+ * viewer, the incident sheet. Tailwind v4 custom utility; used with
+ * `overflow-auto`, never on its own.
+ */
+@utility scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+
+    &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+        background-color: var(--border);
+        border-radius: 4px;
+    }
 }
 
 @layer base {

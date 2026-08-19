@@ -1,0 +1,17 @@
+apiVersion: 1
+
+providers:
+  - name: automation-mcp
+    orgId: 1
+    folder: automation-mcp
+    type: file
+    disableDeletion: false
+    # Dashboards are provisioned from files and are read-only in the UI on
+    # purpose: they are committed, reviewed and deployed like the rest of the
+    # service. Editing one in Grafana and losing it on the next deploy is the
+    # failure this prevents.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

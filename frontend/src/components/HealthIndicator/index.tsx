@@ -29,7 +29,7 @@ const HealthIndicator = () => {
       <TooltipContent className="p-0">
         <ul className="min-w-44 divide-y">
           {deps
-            ? Object.entries(deps).map(([k, up]) => (
+            ? Object.entries(deps).map(([k, state]) => (
                 <li
                   key={k}
                   className="flex items-center justify-between gap-4 px-3 py-1.5 text-xs"
@@ -38,7 +38,13 @@ const HealthIndicator = () => {
                   <span
                     className={cn(
                       "size-2 rounded-full",
-                      up ? "bg-emerald-500" : "bg-red-500"
+                      // `"disabled"` is a truthy string — check it first, or a
+                      // switched-off dependency reads as up.
+                      state === "disabled"
+                        ? "bg-status-idle"
+                        : state
+                          ? "bg-status-ok"
+                          : "bg-status-error"
                     )}
                   />
                 </li>

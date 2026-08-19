@@ -1,0 +1,239 @@
+{
+  "uid": "automation-engine-health",
+  "title": "automation-mcp · engine health",
+  "description": "Protocol traffic and failure rates for the mock NP engine. Every panel here answers a question about the wire, not about the corpus — the corpus dashboard is separate on purpose.",
+  "tags": ["automation-mcp"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "domain",
+        "label": "Domain",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+        "query": "label_values(ondc_sessions_created_total, domain)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Sessions created",
+      "description": "There is deliberately no 'active sessions' gauge: the engine has no way to enumerate sessions, and a per-process counter would lie after a restart and lie across replicas. Ask the corpus for what is live.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(ondc_sessions_created_total{domain=~\"$domain\"}[$__range]))",
+          "legendFormat": "sessions"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Inbound NACK rate",
+      "description": "Fraction of inbound calls the engine refused. A sustained rise here is usually the participant under test; a step change is usually us.",
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(ondc_inbound_calls_total{ack=\"NACK\"}[5m])) / clamp_min(sum(rate(ondc_inbound_calls_total[5m])), 1e-9)",
+          "legendFormat": "nack rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "#f59e0b", "value": 0.05 },
+              { "color": "red", "value": 0.2 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Outbound send failures",
+      "description": "unreachable = the connection never came up and the step is still owed. uncertain = the request was written and the answer lost, so the call may well have landed.",
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(ondc_outbound_sends_total{outcome=~\"unreachable|uncertain\"}[$__range]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "ACK window p99",
+      "description": "How long the participant's connection is held open. The engine writes the ACK before any auto-advance chaining precisely to keep this small.",
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(ondc_inbound_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Validation unavailable",
+      "description": "Both gates fail open when the oracle is unreachable. This is the count of times a payload crossed the wire unvalidated — never zero-rated as 'valid'.",
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(ondc_validation_verdicts_total{verdict=\"unavailable\"}[$__range]))",
+          "legendFormat": "unavailable"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "#f59e0b", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Inbound calls by action",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (action) (rate(ondc_inbound_calls_total[5m]))",
+          "legendFormat": "{{action}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "NACKs by code",
+      "description": "OUT_OF_SEQUENCE dominating usually means a replay-ordering problem, not a misbehaving participant.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (nack_code) (rate(ondc_inbound_calls_total{ack=\"NACK\"}[5m]))",
+          "legendFormat": "{{nack_code}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Flow runs by status",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(ondc_flow_runs_total[10m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Validation findings by layer",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (layer) (rate(ondc_validation_findings_total[10m]))",
+          "legendFormat": "{{layer}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Outbound latency by action (p50 / p95)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, action) (rate(ondc_outbound_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50 {{action}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, action) (rate(ondc_outbound_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95 {{action}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Mock engine executions",
+      "description": "generate / validate / requirements / saveData, run in the worker sandbox. The pool itself is opaque (MockRunner owns it), so this counts executions rather than workers.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (fn, outcome) (rate(ondc_mock_engine_executions_total[5m]))",
+          "legendFormat": "{{fn}} {{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Telemetry mirror queue depth",
+      "description": "A rising queue means the dashboard ingest is slow or down. The sink drops oldest-first and reports the drop count on the next batch, so a gap in the corpus is visible rather than silent.",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        { "expr": "ondc_mirror_queue_depth", "legendFormat": "queued" },
+        {
+          "expr": "sum by (outcome) (rate(ondc_mirror_records_total[5m]))",
+          "legendFormat": "{{outcome}}/s"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Incidents opened by trigger",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "automation-prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (trigger) (rate(ondc_incidents_total[10m]))",
+          "legendFormat": "{{trigger}}"
+        }
+      ]
+    }
+  ]
+}

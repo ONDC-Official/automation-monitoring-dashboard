@@ -79,7 +79,10 @@ export default function LogsPage() {
       try {
         const entry = JSON.parse(e.data) as LogEntry;
         setLiveLogs((prev) => [entry, ...prev].slice(0, 500));
-      } catch {}
+      } catch {
+        // One unparseable frame must not tear down the tail — the rest of the
+        // stream is still good. Dropped deliberately, not by omission.
+      }
     };
     return () => {
       es.close();
