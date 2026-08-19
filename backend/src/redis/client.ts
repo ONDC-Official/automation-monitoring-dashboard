@@ -1,6 +1,8 @@
-import Redis from 'ioredis';
-import { config } from '../config/env';
-import logger from '../observability/logger';
+// Named import, not default: under NodeNext ESM ioredis' CJS default resolves
+// to the module namespace, which is neither constructable nor usable as a type.
+import { Redis } from 'ioredis';
+import { config } from '../config/env.js';
+import logger from '../observability/logger.js';
 
 /**
  * Two ioredis clients, one per logical DB, mirroring the monitored service's

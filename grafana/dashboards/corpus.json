@@ -1,0 +1,222 @@
+{
+  "uid": "automation-corpus",
+  "title": "automation-mcp · incident corpus",
+  "description": "What is actually failing, across every operator. Reads the dashboard's own /api endpoints through the Infinity datasource — Grafana's official MongoDB datasource is Enterprise-only, which is why /api returns flat scalar rows.",
+  "tags": ["automation-mcp", "corpus"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "1m",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Open incidents",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "root_selector": "",
+          "columns": [
+            { "selector": "incidents_open", "text": "open", "type": "number" }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "#f59e0b", "value": 1 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Untriaged",
+      "description": "In the corpus but nobody has picked them up yet. A growing number here means findings nobody has looked at.",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "columns": [
+            { "selector": "incidents_untracked", "text": "untracked", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Reports received",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "columns": [
+            { "selector": "reports_total", "text": "reports", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Installations reporting",
+      "description": "Distinct install_id pseudonyms. Two operators hitting the same fingerprint is the signal the corpus exists to surface.",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "columns": [
+            { "selector": "installs", "text": "installs", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "piechart",
+      "title": "Outcome mix",
+      "description": "recovered vs recovered_with_override is the most important split in the corpus: one says the model was wrong and then was not, the other says a PUBLISHED flow config is broken and somebody had to patch around it. Only the second is actionable outside these repos.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "root_selector": "recovery",
+          "columns": []
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "barchart",
+      "title": "By trigger",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "root_selector": "by_trigger",
+          "columns": [
+            { "selector": "key", "text": "trigger", "type": "string" },
+            { "selector": "count", "text": "count", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "barchart",
+      "title": "By triage status",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "root_selector": "by_status",
+          "columns": [
+            { "selector": "key", "text": "status", "type": "string" },
+            { "selector": "count", "text": "count", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Worst flows",
+      "description": "Ranked by total occurrences, not incident count — a single fingerprint fought fifty times is a worse day than fifty seen once.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/stats",
+          "parser": "backend",
+          "root_selector": "top_flows",
+          "columns": [
+            { "selector": "domain", "text": "domain", "type": "string" },
+            { "selector": "flow_id", "text": "flow", "type": "string" },
+            { "selector": "occurrences", "text": "occurrences", "type": "number" },
+            { "selector": "incidents", "text": "incidents", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Open incidents, worst first",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "automation-corpus" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/mcp/incidents?state=OPEN&sort=occurrences&limit=100",
+          "parser": "backend",
+          "root_selector": "items",
+          "columns": [
+            { "selector": "domain", "text": "domain", "type": "string" },
+            { "selector": "flow_id", "text": "flow", "type": "string" },
+            { "selector": "step_key", "text": "step", "type": "string" },
+            { "selector": "trigger", "text": "trigger", "type": "string" },
+            { "selector": "code", "text": "code", "type": "string" },
+            { "selector": "occurrences_total", "text": "occurrences", "type": "number" },
+            { "selector": "distinct_runs", "text": "runs", "type": "number" },
+            { "selector": "installs", "text": "installs", "type": "number" },
+            { "selector": "triage_status", "text": "status", "type": "string" },
+            { "selector": "triage_notes", "text": "notes", "type": "number" },
+            { "selector": "last_seen_at", "text": "last seen", "type": "string" }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+  ]
+}

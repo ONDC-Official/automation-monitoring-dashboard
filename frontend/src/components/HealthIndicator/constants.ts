@@ -5,6 +5,7 @@ const LABELS: Record<string, string> = {
   loki: "Loki",
   grafana: "Grafana",
   monitoredService: "Mock Service",
+  mongo: "MongoDB (MCP corpus)",
 };
 
 export { LABELS };

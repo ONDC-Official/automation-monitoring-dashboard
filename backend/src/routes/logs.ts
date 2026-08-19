@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middlewares/error';
-import * as loki from '../proxies/loki';
-import logger from '../observability/logger';
+import { asyncHandler } from '../middlewares/error.js';
+import * as loki from '../proxies/loki.js';
+import logger from '../observability/logger.js';
 
 const router = Router();
 

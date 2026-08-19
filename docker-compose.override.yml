@@ -27,3 +27,10 @@ services:
             - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
             # Needed when the dashboard is served from a different origin.
             - GF_SECURITY_COOKIE_SAMESITE=none
+            # The MCP corpus dashboards read this backend's own /api/mcp/*
+            # through Grafana's Infinity datasource (Grafana's MongoDB
+            # datasource is Enterprise-only).
+            - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+            # Must match the backend's ADMIN_TOKEN — /api/mcp/* is gated, and
+            # without this every corpus panel renders empty and silent.
+            - GRAFANA_CORPUS_TOKEN=${ADMIN_TOKEN:-}

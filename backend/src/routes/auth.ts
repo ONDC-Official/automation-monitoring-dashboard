@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { timingSafeEqual } from 'crypto';
-import { config } from '../config/env';
-import { asyncHandler } from '../middlewares/error';
+import { config } from '../config/env.js';
+import { asyncHandler } from '../middlewares/error.js';
 
 const router = Router();
 

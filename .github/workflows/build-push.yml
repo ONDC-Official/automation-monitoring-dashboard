@@ -147,8 +147,6 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
             VITE_API_BASE_URL=${{ steps.vars.outputs.vite_api_base_url }}
-            VITE_AUTH_USERNAME=admin
-            VITE_AUTH_PASSWORD=${{ secrets.MONITORING_DASHBOARD_AUTH_PASSWORD }}
             VITE_BASE_URL=/monitoring
           cache-from: type=gha
           cache-to: type=gha,mode=max

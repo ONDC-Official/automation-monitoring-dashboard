@@ -5,6 +5,7 @@ import type { IProps } from "./types";
 const FormInput = ({
   label,
   error,
+  hint,
   registration,
   id,
   className,
@@ -26,7 +27,11 @@ const FormInput = ({
         {...registration}
         {...rest}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error ? (
+        <p className="text-xs text-destructive">{error}</p>
+      ) : hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 };

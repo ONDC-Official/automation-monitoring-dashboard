@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { config } from '../config/env';
+import { config } from '../config/env.js';
 
 /** Thin wrapper over the Prometheus HTTP API (read-only). */
 

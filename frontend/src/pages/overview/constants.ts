@@ -5,4 +5,5 @@ export const DEP_LABELS: Record<string, string> = {
   loki: "Loki",
   grafana: "Grafana",
   monitoredService: "Mock Service",
+  mongo: "MongoDB (MCP corpus)",
 };
