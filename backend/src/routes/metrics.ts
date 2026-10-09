@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middlewares/error';
-import * as prom from '../proxies/prometheus';
+import { asyncHandler } from '../middlewares/error.js';
+import * as prom from '../proxies/prometheus.js';
 
 const router = Router();
 

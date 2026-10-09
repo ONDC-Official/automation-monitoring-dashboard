@@ -1,11 +1,17 @@
 {
     "compilerOptions": {
-        "target": "ES2022",
+        "target": "ES2023",
         "module": "nodenext",
         "moduleResolution": "nodenext",
-        "lib": ["ES2022"],
+        "lib": ["ES2023"],
         "rootDir": "./src",
         "outDir": "./dist",
+        // `@/` mirrors the convention the ported MCP modules were written to.
+        // `baseUrl` is deliberately omitted (deprecated in TS 6); `paths` alone
+        // resolves relative to this file. `tsc-alias` rewrites the emitted JS.
+        "paths": {
+            "@/*": ["./src/*"]
+        },
         "types": ["node"],
         "strict": true,
         "noUnusedLocals": true,

@@ -1,8 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_AUTH_USERNAME: string;
-  readonly VITE_AUTH_PASSWORD: string;
+  readonly VITE_API_BASE_URL: string;
+  /** Router `basename` and Vite `base`. `/monitoring` in the deployed builds. */
+  readonly VITE_BASE_URL?: string;
 }
 
 interface ImportMeta {

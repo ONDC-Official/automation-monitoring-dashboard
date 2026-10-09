@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middlewares/error';
-import * as grafana from '../proxies/grafana';
+import { asyncHandler } from '../middlewares/error.js';
+import * as grafana from '../proxies/grafana.js';
 
 const router = Router();
 

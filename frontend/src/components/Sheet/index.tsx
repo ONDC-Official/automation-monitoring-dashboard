@@ -129,12 +129,33 @@ function SheetDescription({
   )
 }
 
+/**
+ * The scrolling middle of a sheet, between a pinned header and footer.
+ *
+ * A sheet showing a whole record — the MCP incident detail — needs the body to
+ * scroll while the title and action row stay put. Without it the whole panel
+ * scrolls and the close button leaves the viewport.
+ */
+function SheetBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sheet-body"
+      className={cn(
+        "flex-1 overflow-y-auto px-4 pb-6 scrollbar-thin",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 export {
   Sheet,
   SheetTrigger,
   SheetClose,
   SheetContent,
   SheetHeader,
+  SheetBody,
   SheetFooter,
   SheetTitle,
   SheetDescription,

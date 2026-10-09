@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { config } from '../config/env';
+import { config } from '../config/env.js';
 
 /**
  * Optional bearer-token gate. If ADMIN_TOKEN is unset, the dashboard is

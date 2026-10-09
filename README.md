@@ -1,7 +1,10 @@
 # ONDC Admin Monitoring Dashboard
 
-A dedicated, read-only admin console for observing the
-`automation-mock-playground-service` microservice in real time:
+A read-only admin console for the ONDC automation stack, with **two subjects**.
+
+### 1. The mock playground service
+
+Live observation of `automation-mock-playground-service`:
 
 - **Redis Explorer** — business-decoded view of the cache (DB0 = business state,
   DB1 = runner config). Keys are decoded by their business prefix and validated
@@ -11,47 +14,66 @@ A dedicated, read-only admin console for observing the
   (level / transaction_id / session_id / correlation_id / domain / version),
   pretty JSON-log rendering, and live tail (SSE).
 - **Metrics** — native Recharts panels from the Prometheus query API.
-- **Grafana** — embeds the existing provisioned dashboards (hybrid approach:
-  use Grafana where it's stronger, custom UI for the log/search pain points).
+- **Grafana** — embeds the existing provisioned dashboards.
 - **Overview** — live health of every dependency + Redis keyspace counts.
 
-> The dashboard is **read-only** today. Redis write / "auto-correct" lives as a
-> stub at `backend/src/redis/repair.ts` to be built out later.
+### 2. The MCP corpus
+
+The durable corpus, triage loop and ops view for **`automation-mcp`** — the MCP
+server that plays a mock ONDC network participant.
+
+The engine already reports itself: it captures every stuck run, redacts it
+structurally, renders an `IssueReport` and POSTs it to `FEEDBACK_ENDPOINT_URL`,
+alongside a live mirror of session/run/journal state. **This dashboard is what
+is on the other end of those URLs.**
+
+- **MCP Overview** — the corpus at a glance: incidents, recovery mix, worst
+  flows, and engine health panels from Prometheus.
+- **Incidents** — the corpus, filtered and paged, with a detail sheet (summary,
+  findings, narration, deliveries, raw report) and triage actions.
+- **Sessions** and **Journal** — mirrored live state from the engine, down to
+  the per-step wire log.
+
+**This section is optional.** With `MONGO_URL` unset the dashboard boots
+exactly as before: `/api/mcp/*` answers 503 and the nav group is hidden. An
+operator who only watches the playground service never has to run a MongoDB.
 
 ## Stack
 
 | | |
 |---|---|
-| Backend | Node 22+, Express 5, TypeScript, ioredis, zod, pino, axios |
-| Frontend | Vite, React 19, TypeScript, Tailwind 4, shadcn/ui, TanStack Query/Table, Recharts, React Router 7 |
+| Backend | Node 22+, Express 5 (ESM), TypeScript, ioredis, MongoDB, zod, pino, axios |
+| Frontend | Vite, React 19, TypeScript, Tailwind 4, shadcn/ui, TanStack Query, Recharts, React Router 7 |
 
 Two self-contained packages (no workspaces), matching the house repo layout.
 
 ## Layout
 
 ```
-automation-monitoring/
-├── backend/    # read-only aggregation/proxy API (Redis decode + Prometheus/Loki/Grafana proxies)
-├── frontend/   # React dashboard UI
-└── docker-compose.override.yml   # enables Grafana iframe embedding on the existing obs stack
+├── backend/     read-only aggregation/proxy API + the MCP corpus and triage
+├── frontend/    React dashboard UI
+├── grafana/     provisioned datasources and dashboards for the corpus + engine
+├── docker-compose.dev.yml        mongo for local development
+└── docker-compose.override.yml   enables Grafana iframe embedding on the existing obs stack
 ```
 
 ## Prerequisites
 
-The dashboard observes the existing infra of `automation-mock-playground-service`.
-Have these reachable (defaults in parentheses):
+For the playground-service half, have these reachable (defaults in parentheses):
 
 - Redis (`localhost:6379`) — the same instance the service uses
 - Prometheus (`localhost:9090`), Loki (`localhost:3100`), Grafana (`localhost:3005`)
   — from `automation-mock-playground-service/docker-compose.observability.yml`
-- The service's `/health` (`localhost:3000/mock/playground/health`)
+- The service's `/health` (`localhost:3000/health`)
+
+For the MCP half, a MongoDB — `docker compose -f docker-compose.dev.yml up -d`.
 
 ## Run (local dev)
 
 ```bash
 # 1. Backend
 cd backend
-cp .env.example .env        # adjust hosts/ports if needed
+cp .env.example .env        # adjust hosts/ports; set MONGO_URL to enable MCP
 npm install
 npm run dev                 # http://localhost:4090
 
@@ -69,18 +91,47 @@ Open http://localhost:5190.
 
 ## Backend API
 
-All under `/api` (bearer-gated only if `ADMIN_TOKEN` is set):
+Operator surfaces under `/api` (bearer-gated when `ADMIN_TOKEN` is set):
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/health` | Aggregate up/down for Redis, Prometheus, Loki, Grafana, the service |
-| `GET /api/redis/dbs` | Per-DB key counts + business-type taxonomy |
-| `GET /api/redis/scan?db=&match=&cursor=` | SCAN page of decoded keys (never KEYS) |
-| `GET /api/redis/inspect?db=&key=` | Decoded business view + raw + schema validation |
+| `GET /api/health` | Aggregate up/down for Redis, Prometheus, Loki, Grafana, the service, and Mongo |
+| `GET /api/redis/{dbs,scan,inspect}` | Redis business view (SCAN, never KEYS) |
 | `GET /api/metrics/{query,query_range,targets,rules}` | Prometheus proxy |
-| `GET /api/logs/{query_range,labels}` | Loki proxy |
-| `GET /api/logs/tail?query=` | Loki live tail over SSE |
+| `GET /api/logs/{query_range,labels,tail}` | Loki proxy + live tail over SSE |
 | `GET /api/grafana/{dashboards,embed/:uid}` | Grafana discovery + embed URLs |
+| `GET /api/mcp/config` | Whether the MCP section is configured — **always 200** |
+| `GET /api/mcp/{stats,incidents,sessions,runs}` | The corpus read API |
+| `POST /api/mcp/incidents/:fp/{status,comment,link,dismiss}` | Triage |
+
+**Machine surfaces, deliberately outside the operator login** — each carries its
+own credential:
+
+| Endpoint | Auth |
+|---|---|
+| `POST /ingest/reports`, `POST /ingest/telemetry` | `INGEST_API_KEY` bearer |
+| `GET /mcp-metrics` | `METRICS_TOKEN` bearer (off by default) |
+
+> `/mcp-metrics` is this service's own Prometheus **exposition**;
+> `/api/metrics/*` is a **proxy** that queries Prometheus. Opposite directions —
+> the names are distinct so a scrape config cannot be pointed at the proxy.
+
+## Pointing the engine at this dashboard
+
+In `automation-mcp/.env`:
+
+```bash
+FEEDBACK_ENDPOINT_URL=http://127.0.0.1:4090/ingest/reports
+MIRROR_ENDPOINT_URL=http://127.0.0.1:4090/ingest/telemetry
+FEEDBACK_API_KEY=<same as INGEST_API_KEY here>
+MIRROR_API_KEY=<same as INGEST_API_KEY here>
+TELEMETRY_CORRELATION=true   # deep-link a report to the run that caused it
+FEEDBACK_SALT=<any stable string>
+```
+
+`FEEDBACK_SALT` matters more than it looks: unset, the engine generates one per
+process, so `install_id` changes on every restart and one operator looks like
+many.
 
 ## Grafana embedding
 
@@ -91,12 +142,23 @@ service's observability stack:
 cd ../automation-mock-playground-service
 docker compose \
   -f docker-compose.observability.yml \
-  -f ../automation-monitoring/docker-compose.override.yml \
+  -f ../automation-monitoring-dashboard/docker-compose.override.yml \
   up -d grafana
 ```
 
+The corpus dashboards additionally need the
+`yesoreyeram-infinity-datasource` plugin, and the `Corpus` datasource must send
+`ADMIN_TOKEN` as a bearer — `/api/mcp/*` is behind the operator gate, and
+without the header every panel renders empty with nothing saying why. See
+`grafana/provisioning/datasources/datasources.yml`.
+
 ## Keeping schemas in sync
 
-`backend/src/redis/schemas.ts` is **copied** from the monitored service
-(`src/types/cache-types.ts` et al.) — the repos are independent. Re-sync it when
-those schemas change. Key-decoding logic lives in `backend/src/redis/key-codec.ts`.
+Two vendored copies, both deliberate, both needing a manual re-sync:
+
+- `backend/src/redis/schemas.ts` — copied from the monitored service
+  (`src/types/cache-types.ts` et al.). Key decoding is in `redis/key-codec.ts`.
+- `backend/src/mcp/modules/ingest/report.schema.ts` — the `IssueReport` wire
+  contract, vendored from the engine and **deliberately more lenient than the
+  producer**: a rejected report is resent by the engine's spool forever, so
+  unknown fields pass through and are stored verbatim.

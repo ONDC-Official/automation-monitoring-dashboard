@@ -1,6 +1,6 @@
-import { config } from '../config/env';
-import { clientForDb } from './client';
-import { BusinessType, decodeKey } from './key-codec';
+import { config } from '../config/env.js';
+import { clientForDb } from './client.js';
+import { BusinessType, decodeKey } from './key-codec.js';
 
 /**
  * Read-only Redis access for the dashboard. Uses SCAN (never KEYS) so a large

@@ -1,7 +1,9 @@
 import { type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
-import badgeVariants from "@/components/Badge/variants";
+import badgeVariants, {
+  statusBadgeVariants,
+} from "@/components/Badge/variants";
 
 const Badge = ({
   className,
@@ -21,5 +23,24 @@ const Badge = ({
     />
   );
 };
+
+/** The six states everything in the app classifies itself into. */
+export type BadgeTone = NonNullable<
+  VariantProps<typeof statusBadgeVariants>["tone"]
+>;
+
+export const StatusBadge = ({
+  className,
+  tone = "neutral",
+  size = "default",
+  ...rest
+}: React.ComponentProps<"span"> & VariantProps<typeof statusBadgeVariants>) => (
+  <span
+    data-slot="status-badge"
+    data-tone={tone}
+    className={cn(statusBadgeVariants({ tone, size }), className)}
+    {...rest}
+  />
+);
 
 export default Badge;

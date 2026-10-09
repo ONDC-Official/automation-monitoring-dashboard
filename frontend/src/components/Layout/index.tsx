@@ -12,14 +12,31 @@ import {
   DropdownMenuItem,
 } from "@/components/DropdownMenu";
 import { cn } from "@/lib/utils";
-import { NAV } from "@/components/Layout/constants";
+import { NAV, NAV_GROUPS } from "@/components/Layout/constants";
+import { useMcpConfig } from "@/hooks/useMcp";
 import { logout } from "@/store/authSlice";
 import type { AppDispatch, RootState } from "@/store";
+
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+    isActive
+      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+      : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+  );
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const username = useSelector((state: RootState) => state.auth.username);
+  const mcpConfig = useMcpConfig();
+
+  // While the probe is in flight the group stays hidden. A nav item that
+  // appears a beat late is better than one that appears and then vanishes.
+  const mcpEnabled = mcpConfig.data?.mcp_enabled === true;
+  const groups = NAV_GROUPS.filter(
+    (group) => group.requires !== "mcp" || mcpEnabled
+  );
 
   function handleLogout() {
     dispatch(logout());
@@ -35,24 +52,26 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             Automation Monitor
           </span>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 scrollbar-thin">
           {NAV.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                )
-              }
-            >
+            <NavLink key={to} to={to} end={end} className={linkClass}>
               <Icon className="size-4" />
               {label}
             </NavLink>
+          ))}
+
+          {groups.map((group) => (
+            <div key={group.label} className="mt-4 flex flex-col gap-1">
+              <span className="px-3 pb-1 text-[10px] font-semibold tracking-wider text-sidebar-foreground/40 uppercase">
+                {group.label}
+              </span>
+              {group.items.map(({ to, label, icon: Icon, end }) => (
+                <NavLink key={to} to={to} end={end} className={linkClass}>
+                  <Icon className="size-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>

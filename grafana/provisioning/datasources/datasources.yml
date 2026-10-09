@@ -1,0 +1,53 @@
+apiVersion: 1
+
+# Datasources for the MCP corpus dashboards.
+#
+# Prometheus and Loki are declared here for a standalone `docker-compose.dev.yml`
+# stack. If you are layering these dashboards onto the playground service's own
+# observability stack, that stack already provisions both — delete them from
+# this file rather than provisioning two copies under different uids, or the
+# dashboards will bind to whichever won the race.
+
+datasources:
+  - name: Prometheus
+    uid: automation-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    uid: automation-loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      # Both services log JSON via pino with session_id / flow_id /
+      # transaction_id fields, so a derived field turns a log line into a link
+      # back into the dashboard.
+      maxLines: 1000
+
+  # The corpus. Grafana's official MongoDB datasource is Enterprise-only, so the
+  # dashboard's own JSON API is the datasource instead — which is why
+  # /api/mcp/* returns flat arrays of scalars rather than nested documents.
+  #
+  # NOTE: `/api/mcp/*` sits behind `requireAdminToken`. When ADMIN_TOKEN is set
+  # on the backend — which it is in every deployed environment — this
+  # datasource MUST send it, or every panel renders empty with no error saying
+  # why. Set GRAFANA_CORPUS_TOKEN to the same value as the backend's
+  # ADMIN_TOKEN. Leave it unset only for a local backend with no ADMIN_TOKEN.
+  - name: Corpus
+    uid: automation-corpus
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    url: http://host.docker.internal:4090
+    jsonData:
+      auth_method: none
+      global_queries: []
+      allowedHosts:
+        - http://host.docker.internal:4090
+      httpHeaderName1: Authorization
+    secureJsonData:
+      httpHeaderValue1: Bearer ${GRAFANA_CORPUS_TOKEN}

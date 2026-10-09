@@ -7,7 +7,7 @@ import {
     SessionCacheSchema,
     SubscriberCacheSchema,
     TransactionCacheSchema,
-} from './schemas';
+} from './schemas.js';
 
 /**
  * Decodes a raw Redis key into its business meaning. Key conventions mirror

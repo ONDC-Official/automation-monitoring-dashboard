@@ -52,4 +52,35 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * The common case: hover a thing, read a string.
+ *
+ * Named `HintTooltip` rather than `Tooltip` because `Tooltip` above is the
+ * Radix Root and both are used in this app. The repo this came from called
+ * this one `Tooltip` and had no Root export, which is exactly the sort of
+ * same-name-different-thing that survives a merge and breaks silently.
+ */
+function HintTooltip({
+  label,
+  children,
+  side = "top",
+}: {
+  label: React.ReactNode
+  children: React.ReactNode
+  side?: React.ComponentProps<typeof TooltipContent>["side"]
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+  HintTooltip,
+}

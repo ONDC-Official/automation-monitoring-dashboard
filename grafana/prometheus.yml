@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # The mock-NP engine. `host.docker.internal` reaches the host from inside the
+  # container during development; in a cluster this becomes a service DNS name
+  # or, better, a ServiceMonitor.
+  - job_name: automation-mcp
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          service: automation-mcp
+    # Set METRICS_TOKEN on the engine and uncomment. Prometheus reads the file
+    # rather than taking the literal, so the token is not in this config.
+    # authorization:
+    #   type: Bearer
+    #   credentials_file: /etc/prometheus/metrics-token
+
+  # This dashboard's own process metrics.
+  #
+  # `/mcp-metrics`, NOT `/metrics`: this backend also serves `/api/metrics/*`
+  # as a read-through PROXY to Prometheus for the Metrics page, and pointing a
+  # scrape at a proxy is the mistake the distinct name exists to prevent.
+  # Requires METRICS_ENABLED=true, which is off by default.
+  - job_name: automation-monitoring-dashboard
+    metrics_path: /mcp-metrics
+    static_configs:
+      - targets: ["host.docker.internal:4090"]
+        labels:
+          service: automation-monitoring-dashboard
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

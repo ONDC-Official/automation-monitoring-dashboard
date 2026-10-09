@@ -1,7 +1,9 @@
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { login } from "@/store/authSlice";
+import { login as loginAction } from "@/store/authSlice";
+import { login as loginRequest } from "@/services/auth";
+import { ApiError } from "@/services/httpClient";
 import type { AppDispatch } from "@/store";
 import type { ILoginForm } from "@/pages/login/types";
 
@@ -16,15 +18,18 @@ const useLogin = () => {
     formState: { errors, isSubmitting },
   } = useForm<ILoginForm>();
 
-  function onSubmit(data: ILoginForm) {
-    const validUsername = import.meta.env.VITE_AUTH_USERNAME;
-    const validPassword = import.meta.env.VITE_AUTH_PASSWORD;
-
-    if (data.username === validUsername && data.password === validPassword) {
-      dispatch(login(data.username));
+  async function onSubmit(data: ILoginForm) {
+    try {
+      // Credentials are validated by the backend — never in the browser bundle.
+      const { username, token } = await loginRequest(data.username, data.password);
+      dispatch(loginAction({ username, token }));
       navigate("/", { replace: true });
-    } else {
-      setError("root", { message: "Invalid username or password." });
+    } catch (err) {
+      const message =
+        err instanceof ApiError && err.status === 401
+          ? "Invalid username or password."
+          : "Unable to sign in. Please try again.";
+      setError("root", { message });
     }
   }
 

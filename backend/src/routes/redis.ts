@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { config } from '../config/env';
-import { asyncHandler } from '../middlewares/error';
-import { BUSINESS_TYPES } from '../redis/key-codec';
-import { dbSummary, inspectKey, scanDb } from '../redis/service';
+import { config } from '../config/env.js';
+import { asyncHandler } from '../middlewares/error.js';
+import { BUSINESS_TYPES } from '../redis/key-codec.js';
+import { dbSummary, inspectKey, scanDb } from '../redis/service.js';
 
 const router = Router();
 

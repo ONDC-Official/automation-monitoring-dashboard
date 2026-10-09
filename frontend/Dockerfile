@@ -4,8 +4,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ARG VITE_API_BASE_URL
-ARG VITE_AUTH_USERNAME
-ARG VITE_AUTH_PASSWORD
 ARG VITE_BASE_URL=/
 RUN npm run build
 

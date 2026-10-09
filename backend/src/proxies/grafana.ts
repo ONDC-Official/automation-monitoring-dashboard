@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { config } from '../config/env';
+import { config } from '../config/env.js';
 
 /**
  * Grafana proxy. Lists dashboards and builds embed URLs. The frontend embeds

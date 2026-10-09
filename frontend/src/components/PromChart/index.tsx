@@ -31,14 +31,34 @@ function seriesName(metric: Record<string, string>): string {
     return keys.map(k => `${k}=${labels[k]}`).join(', ');
 }
 
+/**
+ * How to read the Y axis.
+ *
+ * Not cosmetic: a ratio panel plotted as a raw number reads "0.03" where the
+ * question was "3% of calls", and a latency histogram reads "0.42" where it
+ * meant 420ms. The panel knows which it is; the chart cannot guess.
+ */
+export type PromUnit = 'none' | 'percent' | 'seconds';
+
+const formatValue = (value: number, unit: PromUnit): string => {
+    if (unit === 'percent') return `${(value * 100).toFixed(1)}%`;
+    if (unit === 'seconds') {
+        return value < 1 ? `${Math.round(value * 1000)}ms` : `${value.toFixed(2)}s`;
+    }
+    if (Math.abs(value) >= 1000) return value.toLocaleString();
+    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+};
+
 export function PromChart({
     title,
     description,
     query,
+    unit = 'none',
 }: {
     title: string;
     description?: string;
     query: string;
+    unit?: PromUnit;
 }) {
     const { data, isError, error } = usePromRangeQuery(query, {
         refetchInterval: 30_000,
@@ -99,9 +119,15 @@ export function PromChart({
                             <YAxis
                                 fontSize={11}
                                 stroke="var(--muted-foreground)"
-                                width={40}
+                                width={unit === 'none' ? 40 : 56}
+                                tickFormatter={(v: number) =>
+                                    formatValue(v, unit)
+                                }
                             />
                             <Tooltip
+                                formatter={value =>
+                                    formatValue(Number(value ?? 0), unit)
+                                }
                                 labelFormatter={label =>
                                     new Date(
                                         Number(label) * 1000
