@@ -132,7 +132,7 @@ jobs:
         id: vars
         run: |
           if [[ "${{ needs.version.outputs.environment }}" == "staging" ]]; then
-            echo "vite_api_base_url=https://preprod-workbench.ondc.tech/monitoring-api" >> $GITHUB_OUTPUT
+            echo "vite_api_base_url=https://workbench.ondc.tech/monitoring-api" >> $GITHUB_OUTPUT
           else
             echo "vite_api_base_url=https://dev-workbench.ondc.tech/monitoring-api" >> $GITHUB_OUTPUT
           fi
